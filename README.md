@@ -529,53 +529,57 @@ Add your image files under `screenshots/` using the filenames below so they rend
 
 **1A - `./test_objects` output**
 
-![Phase 1A - test_objects output](screenshots/phase1-1A-test_objects.png)
+<img width="940" height="329" alt="image" src="https://github.com/user-attachments/assets/b8acf74b-624a-4961-b672-d1701414ba13" />
+
 
 **1B - object store sharded layout (`find .pes/objects -type f`)**
 
-![Phase 1B - object store layout](screenshots/phase1-1B-objects-find.png)
+<img width="939" height="109" alt="image" src="https://github.com/user-attachments/assets/b33ee5c4-d1a8-476c-87b2-afc0942ff46a" />
+
+
+
 
 ### Phase 2
 
 **2A - `./test_tree` output**
 
-![Phase 2A - test_tree output](screenshots/phase2-2A-test_tree.png)
+<img width="939" height="130" alt="image" src="https://github.com/user-attachments/assets/a099f4dc-9d30-4490-92d9-57842d929683" />
+
 
 **2B - raw tree object (`xxd ... | head -20`)**
+<img width="940" height="50" alt="image" src="https://github.com/user-attachments/assets/3005c94b-b472-413e-a852-62f804bc6f0b" />
 
-![Phase 2B - tree object xxd](screenshots/phase2-2B-tree-xxd.png)
+
 
 ### Phase 3
 
 **3A - `./pes init` -> `./pes add` -> `./pes status`**
 
-![Phase 3A - init add status](screenshots/phase3-3A-init-add-status.png)
+<img width="940" height="531" alt="image" src="https://github.com/user-attachments/assets/1cef0de7-4dd5-40fd-8a1a-b416d44e38d7" />
+
 
 **3B - `.pes/index` text format (`cat .pes/index`)**
 
-![Phase 3B - index file](screenshots/phase3-3B-index-cat.png)
+<img width="940" height="103" alt="image" src="https://github.com/user-attachments/assets/bfa4fbdd-d9bc-494f-a3fb-cc2fd27a9861" />
+
 
 ### Phase 4
 
 **4A - `./pes log` output**
 
-![Phase 4A - pes log](screenshots/phase4-4A-log.png)
+<img width="940" height="601" alt="image" src="https://github.com/user-attachments/assets/9788c647-eb69-4763-900d-6483c57f81fe" />
+
 
 **4B - repository metadata growth (`find .pes -type f | sort`)**
 
-![Phase 4B - pes files sorted](screenshots/phase4-4B-pes-find-sort.png)
+<img width="940" height="250" alt="image" src="https://github.com/user-attachments/assets/e19d400c-9b0f-4047-992a-4056392746f8" />
+
 
 **4C - branch and HEAD references (`cat .pes/refs/heads/main` and `cat .pes/HEAD`)**
 
-![Phase 4C - refs and head](screenshots/phase4-4C-refs-head-cat.png)
+<img width="940" height="104" alt="image" src="https://github.com/user-attachments/assets/1b2f3f74-07b4-4f65-8c1b-ea6d0a6d43c5" />
 
-### Final
 
-**Integration test (`make test-integration`)**
-
-![Final - integration test](screenshots/final-integration-test.png)
-
----
 
 ## Phase 5 & 6: Analysis-Only Questions
 
