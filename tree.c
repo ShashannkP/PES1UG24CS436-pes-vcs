@@ -2,6 +2,7 @@
 
 #include "tree.h"
 #include "pes.h"
+#include "index.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -93,20 +94,93 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 
 // ─── IMPLEMENTATION ─────────────────────────────────────────────────────────
 
-// Simplified version for Phase 2 testing
-int tree_from_index(ObjectID *id_out) {
+static int path_has_prefix(const char *path, const char *prefix) {
+    size_t n = strlen(prefix);
+    return strncmp(path, prefix, n) == 0;
+}
+
+static int tree_has_entry(const Tree *tree, const char *name) {
+    for (int i = 0; i < tree->count; i++) {
+        if (strcmp(tree->entries[i].name, name) == 0) return 1;
+    }
+    return 0;
+}
+
+static int build_tree_for_prefix(const Index *index, const char *prefix, ObjectID *id_out) {
     Tree tree;
     tree.count = 0;
 
-    // Empty tree (test framework focuses on serialization/parsing)
+    char dirs[MAX_TREE_ENTRIES][256];
+    int dir_count = 0;
+
+    size_t prefix_len = strlen(prefix);
+
+    for (int i = 0; i < index->count; i++) {
+        const IndexEntry *ie = &index->entries[i];
+        if (!path_has_prefix(ie->path, prefix)) continue;
+
+        const char *rest = ie->path + prefix_len;
+        if (*rest == '\0') continue;
+
+        const char *slash = strchr(rest, '/');
+        if (!slash) {
+            if (tree.count >= MAX_TREE_ENTRIES) return -1;
+            if (tree_has_entry(&tree, rest)) continue;
+
+            TreeEntry *te = &tree.entries[tree.count++];
+            te->mode = ie->mode;
+            te->hash = ie->hash;
+            snprintf(te->name, sizeof(te->name), "%s", rest);
+            continue;
+        }
+
+        size_t dir_len = (size_t)(slash - rest);
+        if (dir_len == 0 || dir_len >= sizeof(dirs[0])) return -1;
+
+        char name[256];
+        memcpy(name, rest, dir_len);
+        name[dir_len] = '\0';
+
+        int seen = 0;
+        for (int d = 0; d < dir_count; d++) {
+            if (strcmp(dirs[d], name) == 0) {
+                seen = 1;
+                break;
+            }
+        }
+        if (!seen) {
+            if (dir_count >= MAX_TREE_ENTRIES) return -1;
+            snprintf(dirs[dir_count++], sizeof(dirs[0]), "%s", name);
+        }
+    }
+
+    for (int d = 0; d < dir_count; d++) {
+        if (tree.count >= MAX_TREE_ENTRIES) return -1;
+
+        char child_prefix[1024];
+        snprintf(child_prefix, sizeof(child_prefix), "%s%s/", prefix, dirs[d]);
+
+        ObjectID child_id;
+        if (build_tree_for_prefix(index, child_prefix, &child_id) != 0) return -1;
+
+        TreeEntry *te = &tree.entries[tree.count++];
+        te->mode = MODE_DIR;
+        te->hash = child_id;
+        snprintf(te->name, sizeof(te->name), "%s", dirs[d]);
+    }
 
     void *data;
     size_t len;
-
-    if (tree_serialize(&tree, &data, &len) != 0)
-        return -1;
+    if (tree_serialize(&tree, &data, &len) != 0) return -1;
 
     int rc = object_write(OBJ_TREE, data, len, id_out);
     free(data);
     return rc;
+}
+
+int tree_from_index(ObjectID *id_out) {
+    Index index;
+    if (index_load(&index) != 0) return -1;
+
+    return build_tree_for_prefix(&index, "", id_out);
 }
