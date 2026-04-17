@@ -188,6 +188,12 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1;
     }
 
+    size_t header_len = (size_t)(null_pos - buffer) + 1;
+    if (header_len + *len_out > file_size) {
+        free(buffer);
+        return -1;
+    }
+
     // 7. Map type
     if (strcmp(type_str, "blob") == 0) *type_out = OBJ_BLOB;
     else if (strcmp(type_str, "tree") == 0) *type_out = OBJ_TREE;
