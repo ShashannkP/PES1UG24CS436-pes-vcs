@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
+#include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -181,9 +183,54 @@ static int build_tree_for_prefix(const Index *index, const char *prefix, ObjectI
     return rc;
 }
 
+static int tree_load_index(Index *index) {
+    index->count = 0;
+
+    FILE *f = fopen(INDEX_FILE, "r");
+    if (!f) {
+        if (errno == ENOENT) return 0;
+        return -1;
+    }
+
+    char line[2048];
+    while (fgets(line, sizeof(line), f)) {
+        if (index->count >= MAX_INDEX_ENTRIES) {
+            fclose(f);
+            return -1;
+        }
+
+        IndexEntry *entry = &index->entries[index->count];
+        char hex[HASH_HEX_SIZE + 1];
+        uint32_t mode;
+        uint64_t mtime;
+        uint32_t size;
+        char path[sizeof(entry->path)];
+
+        if (sscanf(line, "%o %64s %" SCNu64 " %" SCNu32 " %511[^\n]",
+                   &mode, hex, &mtime, &size, path) != 5) {
+            fclose(f);
+            return -1;
+        }
+
+        if (hex_to_hash(hex, &entry->hash) != 0) {
+            fclose(f);
+            return -1;
+        }
+
+        entry->mode = mode;
+        entry->mtime_sec = mtime;
+        entry->size = size;
+        snprintf(entry->path, sizeof(entry->path), "%s", path);
+        index->count++;
+    }
+
+    fclose(f);
+    return 0;
+}
+
 int tree_from_index(ObjectID *id_out) {
     Index index;
-    if (index_load(&index) != 0) return -1;
+    if (tree_load_index(&index) != 0) return -1;
 
     return build_tree_for_prefix(&index, "", id_out);
 }
