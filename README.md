@@ -521,6 +521,60 @@ make test-integration
 
 **📸 Screenshot 4C:** `cat .pes/refs/heads/main` and `cat .pes/HEAD` showing the reference chain.
 
+## Execution Screenshots
+
+Add your image files under `screenshots/` using the filenames below so they render in this README.
+
+### Phase 1
+
+**1A - `./test_objects` output**
+
+![Phase 1A - test_objects output](screenshots/phase1-1A-test_objects.png)
+
+**1B - object store sharded layout (`find .pes/objects -type f`)**
+
+![Phase 1B - object store layout](screenshots/phase1-1B-objects-find.png)
+
+### Phase 2
+
+**2A - `./test_tree` output**
+
+![Phase 2A - test_tree output](screenshots/phase2-2A-test_tree.png)
+
+**2B - raw tree object (`xxd ... | head -20`)**
+
+![Phase 2B - tree object xxd](screenshots/phase2-2B-tree-xxd.png)
+
+### Phase 3
+
+**3A - `./pes init` -> `./pes add` -> `./pes status`**
+
+![Phase 3A - init add status](screenshots/phase3-3A-init-add-status.png)
+
+**3B - `.pes/index` text format (`cat .pes/index`)**
+
+![Phase 3B - index file](screenshots/phase3-3B-index-cat.png)
+
+### Phase 4
+
+**4A - `./pes log` output**
+
+![Phase 4A - pes log](screenshots/phase4-4A-log.png)
+
+**4B - repository metadata growth (`find .pes -type f | sort`)**
+
+![Phase 4B - pes files sorted](screenshots/phase4-4B-pes-find-sort.png)
+
+**4C - branch and HEAD references (`cat .pes/refs/heads/main` and `cat .pes/HEAD`)**
+
+![Phase 4C - refs and head](screenshots/phase4-4C-refs-head-cat.png)
+
+### Final
+
+**Integration test (`make test-integration`)**
+
+![Final - integration test](screenshots/final-integration-test.png)
+
 ---
 
 ## Phase 5 & 6: Analysis-Only Questions
@@ -531,15 +585,25 @@ The following questions cover filesystem concepts beyond the implementation scop
 
 **Q5.1:** A branch in Git is just a file in `.git/refs/heads/` containing a commit hash. Creating a branch is creating a file. Given this, how would you implement `pes checkout <branch>` — what files need to change in `.pes/`, and what must happen to the working directory? What makes this operation complex?
 
+`pes checkout <branch>` would update `.pes/HEAD` to point to the chosen branch (for example, `refs/heads/branch`), read that branch's commit hash from `.pes/refs/heads/<branch>`, load its tree, and rewrite the working directory to match that snapshot (adding, removing, and updating files). The complexity comes from safely transforming the working directory while preserving user data, handling untracked or modified files, and ensuring consistency between index, objects, and disk.
+
 **Q5.2:** When switching branches, the working directory must be updated to match the target branch's tree. If the user has uncommitted changes to a tracked file, and that file differs between branches, checkout must refuse. Describe how you would detect this "dirty working directory" conflict using only the index and the object store.
 
+To detect a dirty working directory, compare each tracked file's current metadata (size, mtime, or recomputed hash) with the corresponding entry in the index. If a file's current state differs from the index, and the target branch's version of that file also differs, then switching would overwrite local changes, so checkout must abort. This uses only the index (expected state) and object store (committed versions).
+
 **Q5.3:** "Detached HEAD" means HEAD contains a commit hash directly instead of a branch reference. What happens if you make commits in this state? How could a user recover those commits?
+
+In detached HEAD, new commits are created normally but are not referenced by any branch, so they become dangling once you move away. They can still be recovered via their hashes (for example, from logs or reflog-like history) by creating a new branch pointing to them; otherwise, they may eventually be garbage-collected.
 
 ### Garbage Collection and Space Reclamation
 
 **Q6.1:** Over time, the object store accumulates unreachable objects — blobs, trees, or commits that no branch points to (directly or transitively). Describe an algorithm to find and delete these objects. What data structure would you use to track "reachable" hashes efficiently? For a repository with 100,000 commits and 50 branches, estimate how many objects you'd need to visit.
 
+Start from all branch heads (and HEAD), perform a graph traversal (DFS/BFS) over commits, trees, and blobs, marking each visited object as reachable using a hash set. After traversal, any object not in this set is unreachable and can be deleted. With around 100,000 commits and 50 branches, traversal visits roughly all reachable commits plus associated trees/blobs, on the order of hundreds of thousands to a few million objects depending on file history.
+
 **Q6.2:** Why is it dangerous to run garbage collection concurrently with a commit operation? Describe a race condition where GC could delete an object that a concurrent commit is about to reference. How does Git's real GC avoid this?
+
+Running GC concurrently with commit is dangerous because GC might delete an object that a commit is in the process of writing or about to reference (for example, a tree or blob not yet linked from a branch). This race could corrupt history. Real Git avoids this using strategies like writing objects first, updating references atomically, and delaying or locking GC so it only removes objects that are safely unreachable for a grace period.
 
 ---
 
